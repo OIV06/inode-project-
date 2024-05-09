@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <grp.h> // Include the necessary header file
 #include <pwd.h> // Include the <pwd.h> header file
+#include <time.h> // Include the <time.h> header file
 // Global options structure
 typedef struct {
     char *path;
@@ -201,23 +202,28 @@ void print_json(struct stat fileInfo, char *file_path) {
     char perm[10];
     print_permissions(fileInfo.st_mode, perm);
 
+    // Ensure file_path is sanitized for JSON to prevent injection issues.
     printf("{\n");
-    printf("  \"filePath\": \"%s\",\n", file_path);  // Assuming file_path is sanitized for JSON
+    printf("  \"filePath\": \"%s\",\n", file_path);
     printf("  \"inode\": {\n");
     printf("    \"number\": %lu,\n", fileInfo.st_ino);
-    printf("    \"type\": \"%s\",\n", S_ISDIR(fileInfo.st_mode) ? "directory" : 
-                                         S_ISREG(fileInfo.st_mode) ? "regular file" :
-                                         S_ISCHR(fileInfo.st_mode) ? "character device" :
-                                         S_ISBLK(fileInfo.st_mode) ? "block device" :
-                                         S_ISFIFO(fileInfo.st_mode) ? "FIFO" :
-                                         S_ISLNK(fileInfo.st_mode) ? "symbolic link" :
-                                         S_ISSOCK(fileInfo.st_mode) ? "socket" : "unknown");
+    printf("    \"type\": \"%s\",\n",
+           S_ISDIR(fileInfo.st_mode) ? "directory" :
+           S_ISREG(fileInfo.st_mode) ? "regular file" :
+           S_ISCHR(fileInfo.st_mode) ? "character device" :
+           S_ISBLK(fileInfo.st_mode) ? "block device" :
+           S_ISFIFO(fileInfo.st_mode) ? "FIFO" :
+           S_ISLNK(fileInfo.st_mode) ? "symbolic link" :
+           S_ISSOCK(fileInfo.st_mode) ? "socket" : "unknown");
     printf("    \"permissions\": \"%s\",\n", perm);
     printf("    \"linkCount\": %lu,\n", fileInfo.st_nlink);
     printf("    \"uid\": %u,\n", fileInfo.st_uid);
+    printf("    \"owner\": \"%s\",\n", (pw && pw->pw_name) ? pw->pw_name : "Unknown");
     printf("    \"gid\": %u,\n", fileInfo.st_gid);
-    printf("    \"size\": \"%s\",\n", opts.human_readable ? 
-           (fileInfo.st_size < 1024 ? "1K" : 
+    printf("    \"group\": \"%s\",\n", (gr && gr->gr_name) ? gr->gr_name : "Unknown");
+    printf("    \"size\": \"%s\",\n",
+           opts.human_readable ?
+           (fileInfo.st_size < 1024 ? "1K" :
             (fileInfo.st_size < 1024 * 1024 ? "1M" : "1G")) : "bytes");
     printf("    \"accessTime\": \"%s\",\n", format_time(fileInfo.st_atime));
     printf("    \"modificationTime\": \"%s\",\n", format_time(fileInfo.st_mtime));
