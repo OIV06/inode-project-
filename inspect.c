@@ -31,7 +31,7 @@ void process_directory(const char *dir_path, int recursive);
 char* getNumber(struct stat fileInfo);
 char* getType(struct stat fileInfo);
 void print_permissions(struct stat fileInfo, char *perm) ; 
-char* getLinkCount(struct stat fileInfo);
+char* getLink(struct stat fileInfo);
 char* getUid(struct stat fileInfo);
 char* getGid(struct stat fileInfo);
 char* getSize(struct stat fileInfo, int human_readable);
@@ -122,7 +122,7 @@ char* getType(struct stat fileInfo) {
     return "unknown";
 }
 
-char* getLinkCount(struct stat fileInfo) {
+char* getLink(struct stat fileInfo) {
     static char links[20];
     sprintf(links, "%lu", fileInfo.st_nlink);
     return links;
@@ -164,11 +164,11 @@ char* getSize(struct stat fileInfo, int human_readable) {
         if (fileInfo.st_size < 1024) {
             sprintf(size, "%ld bytes", fileInfo.st_size);
         } else if (fileInfo.st_size < 1024 * 1024) {
-            sprintf(size, "%.1f KB", fileInfo.st_size / 1024.0);
+            sprintf(size, "%.1f K", fileInfo.st_size / 1024.0);
         } else if (fileInfo.st_size < 1024 * 1024 * 1024) {
-            sprintf(size, "%.1f MB", fileInfo.st_size / (1024.0 * 1024));
+            sprintf(size, "%.1f M", fileInfo.st_size / (1024.0 * 1024));
         } else {
-            sprintf(size, "%.1f GB", fileInfo.st_size / (1024.0 * 1024 * 1024));
+            sprintf(size, "%.1f G", fileInfo.st_size / (1024.0 * 1024 * 1024));
         }
     } else {
         sprintf(size, "%ld", fileInfo.st_size);  // Print size in bytes only
@@ -204,18 +204,30 @@ void process_directory(const char *dir_path, int recursive) {
         return;
     }
 
+    if (opts.json_format) {
+        printf("[\n");  // Start of JSON array
+    }
+
     struct dirent *entry;
+    int isFirst = 1;  // Flag to help with comma placement before JSON objects
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
 
-        char path[1024]; // Assuming path lengths are contained within this limit
-        sprintf(path, "%s/%s", dir_path, entry->d_name);
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", dir_path, entry->d_name);  // Use snprintf for safety
 
         struct stat fileInfo;
         if (stat(path, &fileInfo) != 0) {
             fprintf(stderr, "Error getting file info for %s: %s\n", path, strerror(errno));
             continue;
+        }
+
+        // Print a comma before each object except the first one
+        if (opts.json_format && !isFirst) {
+            printf(",\n");
+        } else {
+            isFirst = 0;  // After the first pass, set isFirst to false
         }
 
         if (opts.json_format) {
@@ -224,14 +236,19 @@ void process_directory(const char *dir_path, int recursive) {
             print_human_readable(fileInfo, path);
         }
 
-        // If the entry is a directory and recursive is true, recurse into it
+        // Recursive call for directories, if applicable
         if (S_ISDIR(fileInfo.st_mode) && recursive) {
             process_directory(path, recursive);
         }
     }
 
+    if (opts.json_format) {
+        printf("\n]"); // Close JSON array
+    }
+
     closedir(dir);
 }
+
 void printError() {
     fprintf(stderr, "Error redirecting output: %s\n", strerror(errno));
 }
@@ -271,7 +288,7 @@ void print_human_readable(struct stat fileInfo, char *file_path) {
 
     printf("File Type: %s\n", getType(fileInfo));
     printf("Permissions: %s\n", permissions);
-    printf("Number of Hard Links: %s\n", getLinkCount(fileInfo));
+    printf("Number of Hard Links: %s\n", getLink(fileInfo));
     printf("UID: %s\n", getUid(fileInfo));
     printf("GID: %s\n", getGid(fileInfo));
     printf("File Size: %s\n", getSize(fileInfo, opts.human_readable));
@@ -294,7 +311,7 @@ void print_json(struct stat fileInfo, char *file_path) {
     printf("    \"number\": \"%s\",\n", getNumber(fileInfo));
     printf("    \"type\": \"%s\",\n", getType(fileInfo));
     printf("    \"permissions\": \"%s\",\n", permissions);
-    printf("    \"linkCount\": \"%s\",\n", getLinkCount(fileInfo));
+    printf("    \"linkCount\": \"%s\",\n", getLink(fileInfo));
     printf("    \"uid\": \"%s\",\n", getUid(fileInfo));
     printf("    \"gid\": \"%s\",\n", getGid(fileInfo));
     printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.human_readable));
