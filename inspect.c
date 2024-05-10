@@ -24,6 +24,13 @@ void display_help();
 void inspect_file(char *file_path);
 void print_json(struct stat fileInfo, char *file_path);
 void print_human_readable(struct stat fileInfo, char *file_path);
+char* getNumber(struct stat fileInfo);
+char* getType(struct stat fileInfo);
+char* getPermissions(struct stat fileInfo);
+char* getLinkCount(struct stat fileInfo);
+char* getUid(struct stat fileInfo);
+char* getGid(struct stat fileInfo);
+char* getSize(struct stat fileInfo, int human_readable);
 
 
 void parseargs(int argc, char *argv[]) {
@@ -76,47 +83,49 @@ void display_help() {
 }
 void inspect_file(char *file_path) {
     struct stat fileInfo;
-    
-    // Try to get file info using stat
     if (stat(file_path, &fileInfo) != 0) {
         fprintf(stderr, "Error getting file info for %s: %s\n", file_path, strerror(errno));
         return;
     }
-    
-    // Depending on the output format, call the appropriate function
+
     if (opts.json_format) {
         print_json(fileInfo, file_path);
     } else {
         print_human_readable(fileInfo, file_path);
     }
-    
-    // If the -a or --all flag is set, we need to handle directory listing
-    if (S_ISDIR(fileInfo.st_mode) && opts.recursive) {
-        
+}
+char* getNumber(struct stat fileInfo) {
+    static char num[20];
+    sprintf(num, "%lu", fileInfo.st_ino);
+    return num;
+}
+char* getType(struct stat fileInfo) {
+    if (S_ISREG(fileInfo.st_mode)) return "regular file";
+    if (S_ISDIR(fileInfo.st_mode)) return "directory";
+    if (S_ISCHR(fileInfo.st_mode)) return "character device";
+    if (S_ISBLK(fileInfo.st_mode)) return "block device";
+    if (S_ISFIFO(fileInfo.st_mode)) return "FIFO";
+    if (S_ISLNK(fileInfo.st_mode)) return "symbolic link";
+    if (S_ISSOCK(fileInfo.st_mode)) return "socket";
+    return "unknown";
+}
 
-        DIR *dir;
-        struct dirent *entry;
-        
-        if (!(dir = opendir(file_path))) {
-            fprintf(stderr, "Failed to open directory %s\n", file_path);
-            return;
-        }
-        
-        while ((entry = readdir(dir)) != NULL) {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-                continue;
-            
-            char path[1024];
-          
+char* getLinkCount(struct stat fileInfo) {
+    static char links[20];
+    sprintf(links, "%lu", fileInfo.st_nlink);
+    return links;
+}
 
-            int len = snprintf(path, sizeof(path)-1, "%s/%s", file_path, entry->d_name);
-            path[len] = 0;
-            
-            inspect_file(path);  // Recursively call inspect_file
-        }
-        
-        closedir(dir);
-    }
+char* getUid(struct stat fileInfo) {
+    static char uid[20];
+    sprintf(uid, "%u", fileInfo.st_uid);
+    return uid;
+}
+
+char* getGid(struct stat fileInfo) {
+    static char gid[20];
+    sprintf(gid, "%u", fileInfo.st_gid);
+    return gid;
 }
 
 void print_permissions(mode_t mode, char *perm) {
@@ -132,6 +141,25 @@ void print_permissions(mode_t mode, char *perm) {
     if (mode & S_IXOTH) types[8] = 'x';
     strcpy(perm, types);
 }
+
+char* getSize(struct stat fileInfo, int human_readable) {
+    static char size[20];
+    if (human_readable) {
+        if (fileInfo.st_size < 1024) {
+            sprintf(size, "%ld B", fileInfo.st_size);  // Bytes
+        } else if (fileInfo.st_size < 1024 * 1024) {
+            sprintf(size, "%.1f KB", fileInfo.st_size / 1024.0);  // Kilobytes
+        } else if (fileInfo.st_size < 1024 * 1024 * 1024) {
+            sprintf(size, "%.1f MB", fileInfo.st_size / (1024.0 * 1024));  // Megabytes
+        } else {
+            sprintf(size, "%.1f GB", fileInfo.st_size / (1024.0 * 1024 * 1024));  // Gigabytes
+        }
+    } else {
+        sprintf(size, "%ld bytes", fileInfo.st_size);  // Non-human readable format, just bytes
+    }
+    return size;
+}
+
 char* format_time(time_t time) {
     struct tm *tm_info = localtime(&time);
     static char buff[20];
@@ -142,89 +170,45 @@ char* format_time(time_t time) {
 
 void print_human_readable(struct stat fileInfo, char *file_path) {
     printf("Information for %s:\n", file_path);
-    
+
     // File Type
-    printf("File Type: ");
-    if (S_ISREG(fileInfo.st_mode))
-        printf("regular file\n");
-    else if (S_ISDIR(fileInfo.st_mode))
-        printf("directory\n");
-    else if (S_ISCHR(fileInfo.st_mode))
-        printf("character device\n");
-    else if (S_ISBLK(fileInfo.st_mode))
-        printf("block device\n");
-    else if (S_ISFIFO(fileInfo.st_mode))
-        printf("FIFO (named pipe)\n");
-    else if (S_ISLNK(fileInfo.st_mode))
-        printf("symbolic link\n");
-    else if (S_ISSOCK(fileInfo.st_mode))
-        printf("socket\n");
-    else
-        printf("unknown?\n");
-    
+    printf("File Type: %s\n", getType(fileInfo));
+
     // Permissions
-    printf("Permissions: ");
-    char perm[10];
-    print_permissions(fileInfo.st_mode, perm);
-    printf("%s\n", perm);
-    
+    printf("Permissions: %s\n", getPermissions(fileInfo));
+
     // Link Count
-    printf("Number of Hard Links: %lu\n", fileInfo.st_nlink);
-    
+    printf("Number of Hard Links: %s\n", getLinkCount(fileInfo));
+
     // UID and GID
-    struct passwd *pw = getpwuid(fileInfo.st_uid);
-    struct group *gr = getgrgid(fileInfo.st_gid);
-    printf("Owner: %s (UID = %u)\n", pw ? pw->pw_name : "Unknown", fileInfo.st_uid);
-    printf("Group: %s (GID = %u)\n", gr ? gr->gr_name : "Unknown", fileInfo.st_gid);
-    
+    char *uid = getUid(fileInfo);
+    char *gid = getGid(fileInfo);
+    printf("UID: %s\n", uid);
+    printf("GID: %s\n", gid);
+
     // File Size
-    printf("File Size: ");
-    if (opts.human_readable) {
-        if (fileInfo.st_size < 1024)
-            printf("%ld bytes\n", fileInfo.st_size);
-        else if (fileInfo.st_size < 1024 * 1024)
-            printf("%.1f KB\n", fileInfo.st_size / 1024.0);
-        else
-            printf("%.1f MB\n", fileInfo.st_size / (1024.0 * 1024));
-    } else {
-        printf("%ld bytes\n", fileInfo.st_size);
-    }
-    
+    printf("File Size: %s\n", getSize(fileInfo, opts.human_readable));
+
     // Timestamps
     printf("Last Access Time: %s\n", format_time(fileInfo.st_atime));
     printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime));
     printf("Last Status Change Time: %s\n", format_time(fileInfo.st_ctime));
 }
 
-void print_json(struct stat fileInfo, char *file_path) {
-    struct passwd *pw = getpwuid(fileInfo.st_uid);
-    struct group *gr = getgrgid(fileInfo.st_gid);
-    char perm[10];
-    print_permissions(fileInfo.st_mode, perm);
 
+
+void print_json(struct stat fileInfo, char *file_path) {
     // Ensure file_path is sanitized for JSON to prevent injection issues.
     printf("{\n");
     printf("  \"filePath\": \"%s\",\n", file_path);
     printf("  \"inode\": {\n");
-    printf("    \"number\": %lu,\n", fileInfo.st_ino);
-    printf("    \"type\": \"%s\",\n",
-           S_ISDIR(fileInfo.st_mode) ? "directory" :
-           S_ISREG(fileInfo.st_mode) ? "regular file" :
-           S_ISCHR(fileInfo.st_mode) ? "character device" :
-           S_ISBLK(fileInfo.st_mode) ? "block device" :
-           S_ISFIFO(fileInfo.st_mode) ? "FIFO" :
-           S_ISLNK(fileInfo.st_mode) ? "symbolic link" :
-           S_ISSOCK(fileInfo.st_mode) ? "socket" : "unknown");
-    printf("    \"permissions\": \"%s\",\n", perm);
-    printf("    \"linkCount\": %lu,\n", fileInfo.st_nlink);
-    printf("    \"uid\": %u,\n", fileInfo.st_uid);
-    printf("    \"owner\": \"%s\",\n", (pw && pw->pw_name) ? pw->pw_name : "Unknown");
-    printf("    \"gid\": %u,\n", fileInfo.st_gid);
-    printf("    \"group\": \"%s\",\n", (gr && gr->gr_name) ? gr->gr_name : "Unknown");
-    printf("    \"size\": \"%s\",\n",
-           opts.human_readable ?
-           (fileInfo.st_size < 1024 ? "1K" :
-            (fileInfo.st_size < 1024 * 1024 ? "1M" : "1G")) : "bytes");
+    printf("    \"number\": \"%s\",\n", getNumber(fileInfo));
+    printf("    \"type\": \"%s\",\n", getType(fileInfo));
+    printf("    \"permissions\": \"%s\",\n", getPermissions(fileInfo));
+    printf("    \"linkCount\": \"%s\",\n", getLinkCount(fileInfo));
+    printf("    \"uid\": \"%s\",\n", getUid(fileInfo));
+    printf("    \"gid\": \"%s\",\n", getGid(fileInfo));
+    printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.human_readable));
     printf("    \"accessTime\": \"%s\",\n", format_time(fileInfo.st_atime));
     printf("    \"modificationTime\": \"%s\",\n", format_time(fileInfo.st_mtime));
     printf("    \"statusChangeTime\": \"%s\"\n", format_time(fileInfo.st_ctime));
