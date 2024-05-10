@@ -43,10 +43,13 @@ void parseargs(int argc, char *argv[]) {
      memset(&opts, 0, sizeof(items));
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
+           if (strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
             display_help();
             exit(EXIT_SUCCESS);
-        } else if ((strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--all") == 0)) {
+        } else if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--inode") == 0) && i + 1 < argc) {
+            opts.path = argv[++i];
+        } else if 
+        ((strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--all") == 0)) {
             opts.path = (i + 1 < argc) ? argv[++i] : ".";
             opts.recursive = 0; // Reset to default non-recursive
         } else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursive") == 0) {
