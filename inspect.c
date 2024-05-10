@@ -315,17 +315,18 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // If -a or --all is used, process the directory
-    if (opts.recursive || !opts.recursive) {  // This logic checks if the path is meant for directory processing
+    // Decide action based on the type of path expected (file or directory)
+    struct stat fileInfo;
+    if (stat(opts.path, &fileInfo) != 0) {
+        fprintf(stderr, "Error getting file info for %s: %s\n", opts.path, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (S_ISDIR(fileInfo.st_mode) || opts.recursive) {
+        // Process directory either because it's a directory or recursion is requested
         process_directory(opts.path, opts.recursive);
     } else {
-        // Process a single file if -i or --inode is specified or default action
-        struct stat fileInfo;
-        if (stat(opts.path, &fileInfo) != 0) {
-            fprintf(stderr, "Error getting file info for %s: %s\n", opts.path, strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-
+        // Process a single file
         if (opts.json_format) {
             print_json(fileInfo, opts.path);
         } else {
