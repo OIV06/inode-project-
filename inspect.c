@@ -159,29 +159,35 @@ void print_permissions(struct stat fileInfo, char *perm) {
 
 
 char* getSize(struct stat fileInfo, int human_readable) {
-    static char size[20];
+    static char size[64];  // Use a larger buffer to handle large numbers
     if (human_readable) {
         if (fileInfo.st_size < 1024) {
-            sprintf(size, "%ld B", fileInfo.st_size);  // Bytes
+            sprintf(size, "%ld bytes", fileInfo.st_size);
         } else if (fileInfo.st_size < 1024 * 1024) {
-            sprintf(size, "%.1f KB", fileInfo.st_size / 1024.0);  // Kilobytes
+            sprintf(size, "%.1f KB", fileInfo.st_size / 1024.0);
         } else if (fileInfo.st_size < 1024 * 1024 * 1024) {
-            sprintf(size, "%.1f MB", fileInfo.st_size / (1024.0 * 1024));  // Megabytes
+            sprintf(size, "%.1f MB", fileInfo.st_size / (1024.0 * 1024));
         } else {
-            sprintf(size, "%.1f GB", fileInfo.st_size / (1024.0 * 1024 * 1024));  // Gigabytes
+            sprintf(size, "%.1f GB", fileInfo.st_size / (1024.0 * 1024 * 1024));
         }
     } else {
-        sprintf(size, "%ld bytes", fileInfo.st_size);  // Non-human readable format, just bytes
+        sprintf(size, "%ld", fileInfo.st_size);  // Print size in bytes only
     }
     return size;
 }
 
-char* format_time(time_t time) {
-    struct tm *tm_info = localtime(&time);
-    static char buff[20];
-    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", tm_info);
+
+char* format_time(time_t time, int human_readable) {
+    static char buff[64];
+    if (human_readable) {
+        struct tm *tm_info = localtime(&time);
+        strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", tm_info);
+    } else {
+        sprintf(buff, "%ld", (long)time);  // Output raw epoch time
+    }
     return buff;
 }
+
 void inspect_directory(char *base_path) {
     if (base_path == NULL || strlen(base_path) == 0) {
         // Default to current directory if none specified
@@ -269,9 +275,10 @@ void print_human_readable(struct stat fileInfo, char *file_path) {
     printf("UID: %s\n", getUid(fileInfo));
     printf("GID: %s\n", getGid(fileInfo));
     printf("File Size: %s\n", getSize(fileInfo, opts.human_readable));
-    printf("Last Access Time: %s\n", format_time(fileInfo.st_atime));
-    printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime));
-    printf("Last Status Change Time: %s\n", format_time(fileInfo.st_ctime));
+printf("Last Access Time: %s\n", format_time(fileInfo.st_atime, opts.human_readable));
+printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime, opts.human_readable));
+printf("Last Status Change Time: %s\n", format_time(fileInfo.st_ctime, opts.human_readable));
+
 }
 
 
@@ -291,9 +298,9 @@ void print_json(struct stat fileInfo, char *file_path) {
     printf("    \"uid\": \"%s\",\n", getUid(fileInfo));
     printf("    \"gid\": \"%s\",\n", getGid(fileInfo));
     printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.human_readable));
-    printf("    \"accessTime\": \"%s\",\n", (fileInfo.st_atime));
-    printf("    \"modificationTime\": \"%s\",\n", (fileInfo.st_mtime));
-    printf("    \"statusChangeTime\": \"%s\"\n", (fileInfo.st_ctime));
+    printf("    \"accessTime\": \"%s\",\n", format_time(fileInfo.st_atime, opts.human_readable));
+    printf("    \"modificationTime\": \"%s\",\n", format_time(fileInfo.st_mtime, opts.human_readable));
+    printf("    \"statusChangeTime\": \"%s\"\n", format_time(fileInfo.st_ctime, opts.human_readable));
     printf("  }\n");
     printf("}\n");
 }
