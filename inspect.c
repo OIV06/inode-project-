@@ -26,7 +26,7 @@ void print_json(struct stat fileInfo, char *file_path);
 void print_human_readable(struct stat fileInfo, char *file_path);
 char* getNumber(struct stat fileInfo);
 char* getType(struct stat fileInfo);
-void print_permissions(mode_t mode, char *perm); 
+void print_permissions(struct stat fileInfo, char *perm) ; 
 char* getLinkCount(struct stat fileInfo);
 char* getUid(struct stat fileInfo);
 char* getGid(struct stat fileInfo);
@@ -130,8 +130,9 @@ char* getGid(struct stat fileInfo) {
 
 
 
-void print_permissions(mode_t mode, char *perm) {
+void print_permissions(struct stat fileInfo, char *perm) {
     char types[10] = "---------";
+    mode_t mode = fileInfo.st_mode;
     if (mode & S_IRUSR) types[0] = 'r';
     if (mode & S_IWUSR) types[1] = 'w';
     if (mode & S_IXUSR) types[2] = 'x';
@@ -143,6 +144,7 @@ void print_permissions(mode_t mode, char *perm) {
     if (mode & S_IXOTH) types[8] = 'x';
     strcpy(perm, types);
 }
+
 
 char* getSize(struct stat fileInfo, int human_readable) {
     static char size[20];
@@ -173,27 +175,15 @@ char* format_time(time_t time) {
 void print_human_readable(struct stat fileInfo, char *file_path) {
     printf("Information for %s:\n", file_path);
 
-    // File Type
-    printf("File Type: %s\n", getType(fileInfo));
-
-    // Permissions
     char permissions[10];
-    print_permissions(fileInfo.st_mode, permissions);
+    print_permissions(fileInfo, permissions); 
+
+    printf("File Type: %s\n", getType(fileInfo));
     printf("Permissions: %s\n", permissions);
-
-    // Link Count
     printf("Number of Hard Links: %s\n", getLinkCount(fileInfo));
-
-    // UID and GID
-    char *uid = getUid(fileInfo);
-    char *gid = getGid(fileInfo);
-    printf("UID: %s\n", uid);
-    printf("GID: %s\n", gid);
-
-    // File Size
+    printf("UID: %s\n", getUid(fileInfo));
+    printf("GID: %s\n", getGid(fileInfo));
     printf("File Size: %s\n", getSize(fileInfo, opts.human_readable));
-
-    // Timestamps
     printf("Last Access Time: %s\n", format_time(fileInfo.st_atime));
     printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime));
     printf("Last Status Change Time: %s\n", format_time(fileInfo.st_ctime));
@@ -201,14 +191,17 @@ void print_human_readable(struct stat fileInfo, char *file_path) {
 
 
 
+
 void print_json(struct stat fileInfo, char *file_path) {
-    // Ensure file_path is sanitized for JSON to prevent injection issues.
+    char permissions[10];
+    print_permissions(fileInfo, permissions); 
+
     printf("{\n");
     printf("  \"filePath\": \"%s\",\n", file_path);
     printf("  \"inode\": {\n");
     printf("    \"number\": \"%s\",\n", getNumber(fileInfo));
     printf("    \"type\": \"%s\",\n", getType(fileInfo));
-    printf("    \"permissions\": \"%s\",\n", getPermissions(fileInfo));
+    printf("    \"permissions\": \"%s\",\n", permissions);
     printf("    \"linkCount\": \"%s\",\n", getLinkCount(fileInfo));
     printf("    \"uid\": \"%s\",\n", getUid(fileInfo));
     printf("    \"gid\": \"%s\",\n", getGid(fileInfo));
@@ -219,6 +212,7 @@ void print_json(struct stat fileInfo, char *file_path) {
     printf("  }\n");
     printf("}\n");
 }
+
 
 int main(int argc, char *argv[]) {
     struct stat fileInfo;
