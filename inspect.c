@@ -26,7 +26,7 @@ void print_json(struct stat fileInfo, char *file_path);
 void print_human_readable(struct stat fileInfo, char *file_path);
 char* getNumber(struct stat fileInfo);
 char* getType(struct stat fileInfo);
-char* getPermissions(struct stat fileInfo);
+void print_permissions(mode_t mode, char *perm); 
 char* getLinkCount(struct stat fileInfo);
 char* getUid(struct stat fileInfo);
 char* getGid(struct stat fileInfo);
@@ -128,6 +128,8 @@ char* getGid(struct stat fileInfo) {
     return gid;
 }
 
+
+
 void print_permissions(mode_t mode, char *perm) {
     char types[10] = "---------";
     if (mode & S_IRUSR) types[0] = 'r';
@@ -175,7 +177,9 @@ void print_human_readable(struct stat fileInfo, char *file_path) {
     printf("File Type: %s\n", getType(fileInfo));
 
     // Permissions
-    printf("Permissions: %s\n", getPermissions(fileInfo));
+    char permissions[10];
+    print_permissions(fileInfo.st_mode, permissions);
+    printf("Permissions: %s\n", permissions);
 
     // Link Count
     printf("Number of Hard Links: %s\n", getLinkCount(fileInfo));
