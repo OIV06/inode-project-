@@ -308,22 +308,29 @@ int main(int argc, char *argv[]) {
         redirect(opts.log_file);
     }
 
-    // Further operations such as file inspection
+    // Check if a path has been specified
     if (opts.path == NULL) {
         fprintf(stderr, "No file or directory path specified.\n");
+        display_help();
         exit(EXIT_FAILURE);
     }
 
-    struct stat fileInfo;
-    if (stat(opts.path, &fileInfo) != 0) {
-        fprintf(stderr, "Error getting file info for %s: %s\n", opts.path, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    if (opts.json_format) {
-        print_json(fileInfo, opts.path);
+    // If -a or --all is used, process the directory
+    if (opts.recursive || !opts.recursive) {  // This logic checks if the path is meant for directory processing
+        process_directory(opts.path, opts.recursive);
     } else {
-        print_human_readable(fileInfo, opts.path);
+        // Process a single file if -i or --inode is specified or default action
+        struct stat fileInfo;
+        if (stat(opts.path, &fileInfo) != 0) {
+            fprintf(stderr, "Error getting file info for %s: %s\n", opts.path, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
+        if (opts.json_format) {
+            print_json(fileInfo, opts.path);
+        } else {
+            print_human_readable(fileInfo, opts.path);
+        }
     }
 
     return 0;
