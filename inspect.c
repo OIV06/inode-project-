@@ -105,7 +105,7 @@ void inspectFile(char *filePath) {//
     }
 }
 unsigned long getNumber(struct stat fileInfo) {
-    return fileInfo.st_ino;  // Inode number as unsigned long
+    return fileInfo.st_ino;  
 }
 char* getType(struct stat fileInfo) {
     if (S_ISREG(fileInfo.st_mode)) return "regular file";
