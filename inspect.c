@@ -6,13 +6,11 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <grp.h> // Include the necessary header file
-#include <pwd.h> // Include the <pwd.h> header file
-#include <time.h> // Include the <time.h> header file
-// Global options structure
+#include <time.h> 
+// Global item structure
 typedef struct {
     char *path;
-    int human_readable;
+    int humanReadable;
     int json_format;
     char *log_file;
     int recursive;
@@ -20,42 +18,42 @@ typedef struct {
 
 items opts;
 
-// Function Declarations
+// Function declarations
 void parseargs(int argc, char *argv[]);
-void display_help();
-void inspect_file(char *file_path);
-void print_json(struct stat fileInfo, char *file_path);
-void print_human_readable(struct stat fileInfo, char *file_path);
-void inspect_directory(char *base_path);
-void process_directory(const char *dir_path, int recursive);
+void displayHelp();
+void inspectFile(char *filePath);
+void print_json(struct stat fileInfo, char *filePath);
+void printHumanRead(struct stat fileInfo, char *filePath);
+void inspectDirectory(char *basePath);
+void printPerm(struct stat fileInfo, char *perm);
+void processDirectory(const char *dirPth, int recursive);
 char* getNumber(struct stat fileInfo);
 char* getType(struct stat fileInfo);
-void print_permissions(struct stat fileInfo, char *perm) ; 
 char* getLink(struct stat fileInfo);
 char* getUid(struct stat fileInfo);
 char* getGid(struct stat fileInfo);
-char* getSize(struct stat fileInfo, int human_readable);
+char* getSize(struct stat fileInfo, int humanReadable);
 void printError();
 void redirect(const char* logFilePath);
 
 
-void parseargs(int argc, char *argv[]) {
-     memset(&opts, 0, sizeof(items));
+void parseargs(int argc, char *argv[]) {//parsingthe arguments
+     memset(&opts, 0, sizeof(items));//setting the values to zero
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {//for loop to check for arguments
            if (strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
-            display_help();
-            exit(EXIT_SUCCESS);
+            displayHelp();
+            exit(EXIT_SUCCESS);//display help and exit
         } else if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--inode") == 0) && i + 1 < argc) {
-            opts.path = argv[++i];
+            opts.path = argv[++i];//path if i and inode
         } else if 
         ((strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--all") == 0)) {
             opts.path = (i + 1 < argc) ? argv[++i] : ".";
-            opts.recursive = 0; // Reset to default non-recursive
+            opts.recursive = 0;//change back to non recursive
         } else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursive") == 0) {
             opts.recursive = 1;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--human") == 0) {
-            opts.human_readable = 1;
+            opts.humanReadable = 1;
         } else if ((strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) && i + 1 < argc) {
             if (strcmp(argv[i+1], "json") == 0) {
                 opts.json_format = 1;
@@ -64,49 +62,49 @@ void parseargs(int argc, char *argv[]) {
         } else if ((strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0) && i + 1 < argc) {
             opts.log_file = argv[++i];
         } else {
-            fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
-            display_help();
+            fprintf(stderr, "Unrecognized option: %s\n", argv[i]);//check for unrecognized options
+            displayHelp();
             exit(EXIT_FAILURE);
         }
     }
 
-    if (opts.path && strcmp(argv[argc-2], "-a") == 0) {
-        inspect_directory(opts.path);
+    if (opts.path && strcmp(argv[argc-2], "-a") == 0) {//extension for path a and recursive
+        inspectDirectory(opts.path);
         exit(EXIT_SUCCESS);
     }
 
-    if (opts.path == NULL) {
+    if (opts.path == NULL) {//error message if no path is specified
         fprintf(stderr, "No file or directory path specified.\n");
-        display_help();
+        displayHelp();
         exit(EXIT_FAILURE);
     }
 }
 
-void display_help() {
+void displayHelp() {//help message 
     printf("Usage: inspect [options]\n");
     printf("Options:\n");
     printf(" -?, --help                 Display this help message.\n");
-    printf(" -i, --inode <file_path>    Display detailed inode information for the specified file.\n");
+    printf(" -i, --inode <filePath>    Display detailed inode information for the specified file.\n");
     printf(" -a, --all [directory_path] Display inode information for all files in the specified directory.\n");
     printf(" -r, --recursive            List information recursively for directories.\n");
-    printf(" -h, --human                Output sizes and dates in human-readable form.\n");
+    printf(" -h, --human                Output changes sizes and dates in human-readable form.\n");
     printf(" -f, --format [text|json]   Specify output format, default is text.\n");
     printf(" -l, --log <log_file>       Log operations to the specified file.\n");
 }
-void inspect_file(char *file_path) {
-    struct stat fileInfo;
-    if (stat(file_path, &fileInfo) != 0) {
-        fprintf(stderr, "Error getting file info for %s: %s\n", file_path, strerror(errno));
+void inspectFile(char *filePath) {//
+    struct stat fileInfo;//structure for file info
+    if (stat(filePath, &fileInfo) != 0) {//
+        fprintf(stderr, "Error getting file info for %s: %s\n", filePath, strerror(errno));//error message for no file info
         return;
     }
 
-    if (opts.json_format) {
-        print_json(fileInfo, file_path);
+    if (opts.json_format) {//grabbing the json format
+        print_json(fileInfo, filePath);
     } else {
-        print_human_readable(fileInfo, file_path);
+        printHumanRead(fileInfo, filePath);//grabbing the human readable format
     }
 }
-char* getNumber(struct stat fileInfo) {
+char* getNumber(struct stat fileInfo) {//getting inode number
     static char num[20];
     sprintf(num, "%lu", fileInfo.st_ino);
     return num;
@@ -122,7 +120,7 @@ char* getType(struct stat fileInfo) {
     return "unknown";
 }
 
-char* getLink(struct stat fileInfo) {
+char* getLink(struct stat fileInfo) {//getting hard links
     static char links[20];
     sprintf(links, "%lu", fileInfo.st_nlink);
     return links;
@@ -142,7 +140,7 @@ char* getGid(struct stat fileInfo) {
 
 
 
-void print_permissions(struct stat fileInfo, char *perm) {
+void printPerm(struct stat fileInfo, char *perm) {//checking and printing permissions
     char types[10] = "---------";
     mode_t mode = fileInfo.st_mode;
     if (mode & S_IRUSR) types[0] = 'r';
@@ -158,17 +156,17 @@ void print_permissions(struct stat fileInfo, char *perm) {
 }
 
 
-char* getSize(struct stat fileInfo, int human_readable) {
+char* getSize(struct stat fileInfo, int humanReadable) {
     static char size[64];  // Use a larger buffer to handle large numbers
-    if (human_readable) {
+    if (humanReadable) {
         if (fileInfo.st_size < 1024) {
-            sprintf(size, "%ld bytes", fileInfo.st_size);
+            sprintf(size, "%ld B", fileInfo.st_size);//bytes
         } else if (fileInfo.st_size < 1024 * 1024) {
-            sprintf(size, "%.1f K", fileInfo.st_size / 1024.0);
+            sprintf(size, "%.1f K", fileInfo.st_size / 1024.0);//kilobytes
         } else if (fileInfo.st_size < 1024 * 1024 * 1024) {
-            sprintf(size, "%.1f M", fileInfo.st_size / (1024.0 * 1024));
+            sprintf(size, "%.1f M", fileInfo.st_size / (1024.0 * 1024));//megabytes
         } else {
-            sprintf(size, "%.1f G", fileInfo.st_size / (1024.0 * 1024 * 1024));
+            sprintf(size, "%.1f G", fileInfo.st_size / (1024.0 * 1024 * 1024));//gigabytes
         }
     } else {
         sprintf(size, "%ld", fileInfo.st_size);  // Print size in bytes only
@@ -177,30 +175,30 @@ char* getSize(struct stat fileInfo, int human_readable) {
 }
 
 
-char* format_time(time_t time, int human_readable) {
+char* format_time(time_t time, int humanReadable) {//making the time human readable
     static char buff[64];
-    if (human_readable) {
+    if (humanReadable) {
         struct tm *tm_info = localtime(&time);
         strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", tm_info);
     } else {
-        sprintf(buff, "%ld", (long)time);  // Output raw epoch time
+        sprintf(buff, "%ld", (long)time);  // Output raw time
     }
     return buff;
 }
 
-void inspect_directory(char *base_path) {
-    if (base_path == NULL || strlen(base_path) == 0) {
-        // Default to current directory if none specified
-        base_path = ".";
+void inspectDirectory(char *basePath) {
+    if (basePath == NULL || strlen(basePath) == 0) {
+        // defaulting to current directory if none specified
+        basePath = ".";
     }
 
-    process_directory(base_path, opts.recursive);
+    processDirectory(basePath, opts.recursive);
 }
 
-void process_directory(const char *dir_path, int recursive) {
-    DIR *dir = opendir(dir_path);
+void processDirectory(const char *dirPth, int recursive) {
+    DIR *dir = opendir(dirPth);
     if (dir == NULL) {
-        perror("Failed to open directory");
+        perror("error opening directory");
         return;
     }
 
@@ -209,41 +207,41 @@ void process_directory(const char *dir_path, int recursive) {
     }
 
     struct dirent *entry;
-    int isFirst = 1;  // Flag to help with comma placement before JSON objects
+    int firstIn = 1;  // Flag for comma placement
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
 
         char path[1024];
-        snprintf(path, sizeof(path), "%s/%s", dir_path, entry->d_name);  // Use snprintf for safety
+        snprintf(path, sizeof(path), "%s/%s", dirPth, entry->d_name); //constructing path
 
         struct stat fileInfo;
         if (stat(path, &fileInfo) != 0) {
-            fprintf(stderr, "Error getting file info for %s: %s\n", path, strerror(errno));
+            fprintf(stderr, "error getting file info for %s: %s\n", path, strerror(errno));//error message 
             continue;
         }
 
-        // Print a comma before each object except the first one
-        if (opts.json_format && !isFirst) {
+        // Print comma after first output
+        if (opts.json_format && !firstIn) {
             printf(",\n");
         } else {
-            isFirst = 0;  // After the first pass, set isFirst to false
+            firstIn = 0;  // reset flag afeter first output
         }
 
         if (opts.json_format) {
             print_json(fileInfo, path);
         } else {
-            print_human_readable(fileInfo, path);
+            printHumanRead(fileInfo, path);
         }
 
-        // Recursive call for directories, if applicable
+        // recurse into subdirectories
         if (S_ISDIR(fileInfo.st_mode) && recursive) {
-            process_directory(path, recursive);
+            processDirectory(path, recursive);
         }
     }
 
     if (opts.json_format) {
-        printf("\n]"); // Close JSON array
+        printf("\n]"); // close json array
     }
 
     closedir(dir);
@@ -252,9 +250,9 @@ void process_directory(const char *dir_path, int recursive) {
 void printError() {
     fprintf(stderr, "Error redirecting output: %s\n", strerror(errno));
 }
-void redirect(const char* logFilePath) {
+void redirect(const char* logFilePath) {//redirection for log file
     if (logFilePath != NULL) {
-        // Open the log file with append mode
+        
         int outFileno = open(logFilePath, O_WRONLY | O_CREAT | O_APPEND, 0666);
         if (outFileno == -1) {
             printError();
@@ -268,45 +266,45 @@ void redirect(const char* logFilePath) {
             exit(EXIT_FAILURE);
         }
 
-        // Duplicate the file descriptor to stderr
+        // duplicate the file descriptor to stderr
         if (dup2(outFileno, STDERR_FILENO) == -1) {
             printError();
             exit(EXIT_FAILURE);
         }
 
-        // Close the original file descriptor as it's no longer needed
+        // close the original file descriptor 
         close(outFileno);
     }
 }
 
 
-void print_human_readable(struct stat fileInfo, char *file_path) {
-    printf("Information for %s:\n", file_path);
+void printHumanRead(struct stat fileInfo, char *filePath) {//making numbers to readable format
+    printf("Information for %s:\n", filePath);
 
     char permissions[10];
-    print_permissions(fileInfo, permissions); 
+    printPerm(fileInfo, permissions); 
 
     printf("File Type: %s\n", getType(fileInfo));
     printf("Permissions: %s\n", permissions);
     printf("Number of Hard Links: %s\n", getLink(fileInfo));
     printf("UID: %s\n", getUid(fileInfo));
     printf("GID: %s\n", getGid(fileInfo));
-    printf("File Size: %s\n", getSize(fileInfo, opts.human_readable));
-printf("Last Access Time: %s\n", format_time(fileInfo.st_atime, opts.human_readable));
-printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime, opts.human_readable));
-printf("Last Status Change Time: %s\n", format_time(fileInfo.st_ctime, opts.human_readable));
+    printf("File Size: %s\n", getSize(fileInfo, opts.humanReadable));
+printf("Last Access Time: %s\n", format_time(fileInfo.st_atime, opts.humanReadable));
+printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime, opts.humanReadable));
+printf("Last Status Change Time: %s\n", format_time(fileInfo.st_ctime, opts.humanReadable));
 
 }
 
 
 
 
-void print_json(struct stat fileInfo, char *file_path) {
+void print_json(struct stat fileInfo, char *filePath) {//ensuring json format
     char permissions[10];
-    print_permissions(fileInfo, permissions); 
+    printPerm(fileInfo, permissions); 
 
     printf("{\n");
-    printf("  \"filePath\": \"%s\",\n", file_path);
+    printf("  \"filePath\": \"%s\",\n", filePath);
     printf("  \"inode\": {\n");
     printf("    \"number\": \"%s\",\n", getNumber(fileInfo));
     printf("    \"type\": \"%s\",\n", getType(fileInfo));
@@ -314,10 +312,10 @@ void print_json(struct stat fileInfo, char *file_path) {
     printf("    \"linkCount\": \"%s\",\n", getLink(fileInfo));
     printf("    \"uid\": \"%s\",\n", getUid(fileInfo));
     printf("    \"gid\": \"%s\",\n", getGid(fileInfo));
-    printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.human_readable));
-    printf("    \"accessTime\": \"%s\",\n", format_time(fileInfo.st_atime, opts.human_readable));
-    printf("    \"modificationTime\": \"%s\",\n", format_time(fileInfo.st_mtime, opts.human_readable));
-    printf("    \"statusChangeTime\": \"%s\"\n", format_time(fileInfo.st_ctime, opts.human_readable));
+    printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.humanReadable));
+    printf("    \"accessTime\": \"%s\",\n", format_time(fileInfo.st_atime, opts.humanReadable));
+    printf("    \"modificationTime\": \"%s\",\n", format_time(fileInfo.st_mtime, opts.humanReadable));
+    printf("    \"statusChangeTime\": \"%s\"\n", format_time(fileInfo.st_ctime, opts.humanReadable));
     printf("  }\n");
     printf("}\n");
 }
@@ -325,21 +323,21 @@ void print_json(struct stat fileInfo, char *file_path) {
 
 
 int main(int argc, char *argv[]) {
-    parseargs(argc, argv);  // Parse command-line arguments
+    parseargs(argc, argv);  // parse arguments
 
-    // Setup logging if a log file is specified
+    //logging if needed
     if (opts.log_file != NULL) {
         redirect(opts.log_file);
     }
 
-    // Check if a path has been specified
+    // check path
     if (opts.path == NULL) {
         fprintf(stderr, "No file or directory path specified.\n");
-        display_help();
+        displayHelp();
         exit(EXIT_FAILURE);
     }
 
-    // Decide action based on the type of path expected (file or directory)
+    // check for file or directory
     struct stat fileInfo;
     if (stat(opts.path, &fileInfo) != 0) {
         fprintf(stderr, "Error getting file info for %s: %s\n", opts.path, strerror(errno));
@@ -347,17 +345,16 @@ int main(int argc, char *argv[]) {
     }
 
     if (S_ISDIR(fileInfo.st_mode) || opts.recursive) {
-        // Process directory either because it's a directory or recursion is requested
-        process_directory(opts.path, opts.recursive);
+        // process directory for directory or recursive 
+        processDirectory(opts.path, opts.recursive);
     } else {
-        // Process a single file
+        // process a single file
         if (opts.json_format) {
             print_json(fileInfo, opts.path);
         } else {
-            print_human_readable(fileInfo, opts.path);
+            printHumanRead(fileInfo, opts.path);
         }
     }
 
-    return 0;
+    return 0;// all done  
 }
-// Implement other functions...
