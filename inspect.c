@@ -149,16 +149,16 @@ void printPerm(struct stat fileInfo, char *perm) {//checking and printing permis
 
 
 char* getSize(struct stat fileInfo, int humanReadable) {
-    static char size[64];  // Use a larger buffer to handle large numbers
+    static char size[64];  // Buffer to store the size string
     if (humanReadable) {
         if (fileInfo.st_size < 1024) {
-            sprintf(size, "%ldB", fileInfo.st_size);//bytes
+            sprintf(size, "%ldB", fileInfo.st_size); // Bytes
         } else if (fileInfo.st_size < 1024 * 1024) {
-            sprintf(size, "%.1fK", fileInfo.st_size / 1024.0);//kilobytes
+            sprintf(size, "%ldK", fileInfo.st_size / 1024); // Kilobytes
         } else if (fileInfo.st_size < 1024 * 1024 * 1024) {
-            sprintf(size, "%.1fM", fileInfo.st_size / (1024.0 * 1024));//megabytes
+            sprintf(size, "%ldM", fileInfo.st_size / (1024 * 1024)); // Megabytes
         } else {
-            sprintf(size, "%.1fG", fileInfo.st_size / (1024.0 * 1024 * 1024));//gigabytes
+            sprintf(size, "%ldG", fileInfo.st_size / (1024 * 1024 * 1024)); // Gigabytes
         }
     } else {
         sprintf(size, "%ld", fileInfo.st_size);  // Print size in bytes only
