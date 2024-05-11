@@ -27,9 +27,9 @@ void printHumanRead(struct stat fileInfo, char *filePath);
 void inspectDirectory(char *basePath);
 void printPerm(struct stat fileInfo, char *perm);
 void processDirectory(const char *dirPth, int recursive);
-char* getNumber(struct stat fileInfo);
+unsigned long getNumber(struct stat fileInfo);
 char* getType(struct stat fileInfo);
-char* getLink(struct stat fileInfo);
+unsigned int getLink(struct stat fileInfo);
 unsigned int getUid(struct stat fileInfo);
 unsigned int getGid(struct stat fileInfo);
 char* getSize(struct stat fileInfo, int humanReadable);
@@ -104,10 +104,8 @@ void inspectFile(char *filePath) {//
         printHumanRead(fileInfo, filePath);//grabbing the human readable format
     }
 }
-char* getNumber(struct stat fileInfo) {//getting inode number
-    static char num[20];
-    sprintf(num, "%lu", fileInfo.st_ino);
-    return num;
+unsigned long getNumber(struct stat fileInfo) {
+    return fileInfo.st_ino;  // Inode number as unsigned long
 }
 char* getType(struct stat fileInfo) {
     if (S_ISREG(fileInfo.st_mode)) return "regular file";
@@ -120,10 +118,8 @@ char* getType(struct stat fileInfo) {
     return "unknown";
 }
 
-char* getLink(struct stat fileInfo) {//getting hard links
-    static char links[20];
-    sprintf(links, "%lu", fileInfo.st_nlink);
-    return links;
+unsigned int getLink(struct stat fileInfo) {
+    return fileInfo.st_nlink;  
 }
 
 unsigned int getUid(struct stat fileInfo) {
@@ -282,7 +278,7 @@ void printHumanRead(struct stat fileInfo, char *filePath) {//making numbers to r
 
     printf("File Type: %s\n", getType(fileInfo));
     printf("Permissions: %s\n", permissions);
-    printf("Number of Hard Links: %s\n", getLink(fileInfo));
+    printf("Number of Hard Links: %u\n", getLink(fileInfo));
     printf("UID: %u\n", getUid(fileInfo));
     printf("GID: %u\n", getGid(fileInfo));
     printf("File Size: %s\n", getSize(fileInfo, opts.humanReadable));
@@ -302,10 +298,10 @@ void print_json(struct stat fileInfo, char *filePath) {//ensuring json format
     printf("{\n");
     printf("  \"filePath\": \"%s\",\n", filePath);
     printf("  \"inode\": {\n");
-    printf("    \"number\": \"%s\",\n", getNumber(fileInfo));
+    printf("    \"number\": %lu,\n", getNumber(fileInfo));
     printf("    \"type\": \"%s\",\n", getType(fileInfo));
     printf("    \"permissions\": \"%s\",\n", permissions);
-    printf("    \"linkCount\": \"%s\",\n", getLink(fileInfo));
+    printf("    \"linkCount\": %u,\n", getLink(fileInfo));
     printf("    \"uid\": %u,\n", getUid(fileInfo));
     printf("    \"gid\": %u,\n", getGid(fileInfo));
     printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.humanReadable));
