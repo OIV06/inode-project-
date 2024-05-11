@@ -30,8 +30,8 @@ void processDirectory(const char *dirPth, int recursive);
 char* getNumber(struct stat fileInfo);
 char* getType(struct stat fileInfo);
 char* getLink(struct stat fileInfo);
-char* getUid(struct stat fileInfo);
-char* getGid(struct stat fileInfo);
+unsigned int getUid(struct stat fileInfo);
+unsigned int getGid(struct stat fileInfo);
 char* getSize(struct stat fileInfo, int humanReadable);
 void printError();
 void redirect(const char* logFilePath);
@@ -126,16 +126,12 @@ char* getLink(struct stat fileInfo) {//getting hard links
     return links;
 }
 
-char* getUid(struct stat fileInfo) {
-    static char uid[20];
-    sprintf(uid, "%u", fileInfo.st_uid);
-    return uid;
+unsigned int getUid(struct stat fileInfo) {
+    return fileInfo.st_uid;
 }
 
-char* getGid(struct stat fileInfo) {
-    static char gid[20];
-    sprintf(gid, "%u", fileInfo.st_gid);
-    return gid;
+unsigned int getGid(struct stat fileInfo) {
+    return fileInfo.st_gid;
 }
 
 
@@ -160,13 +156,13 @@ char* getSize(struct stat fileInfo, int humanReadable) {
     static char size[64];  // Use a larger buffer to handle large numbers
     if (humanReadable) {
         if (fileInfo.st_size < 1024) {
-            sprintf(size, "%ld B", fileInfo.st_size);//bytes
+            sprintf(size, "%ldB", fileInfo.st_size);//bytes
         } else if (fileInfo.st_size < 1024 * 1024) {
-            sprintf(size, "%.1f K", fileInfo.st_size / 1024.0);//kilobytes
+            sprintf(size, "%.1fK", fileInfo.st_size / 1024.0);//kilobytes
         } else if (fileInfo.st_size < 1024 * 1024 * 1024) {
-            sprintf(size, "%.1f M", fileInfo.st_size / (1024.0 * 1024));//megabytes
+            sprintf(size, "%.1fM", fileInfo.st_size / (1024.0 * 1024));//megabytes
         } else {
-            sprintf(size, "%.1f G", fileInfo.st_size / (1024.0 * 1024 * 1024));//gigabytes
+            sprintf(size, "%.1fG", fileInfo.st_size / (1024.0 * 1024 * 1024));//gigabytes
         }
     } else {
         sprintf(size, "%ld", fileInfo.st_size);  // Print size in bytes only
@@ -287,8 +283,8 @@ void printHumanRead(struct stat fileInfo, char *filePath) {//making numbers to r
     printf("File Type: %s\n", getType(fileInfo));
     printf("Permissions: %s\n", permissions);
     printf("Number of Hard Links: %s\n", getLink(fileInfo));
-    printf("UID: %s\n", getUid(fileInfo));
-    printf("GID: %s\n", getGid(fileInfo));
+    printf("UID: %u\n", getUid(fileInfo));
+    printf("GID: %u\n", getGid(fileInfo));
     printf("File Size: %s\n", getSize(fileInfo, opts.humanReadable));
 printf("Last Access Time: %s\n", format_time(fileInfo.st_atime, opts.humanReadable));
 printf("Last Modification Time: %s\n", format_time(fileInfo.st_mtime, opts.humanReadable));
@@ -310,8 +306,8 @@ void print_json(struct stat fileInfo, char *filePath) {//ensuring json format
     printf("    \"type\": \"%s\",\n", getType(fileInfo));
     printf("    \"permissions\": \"%s\",\n", permissions);
     printf("    \"linkCount\": \"%s\",\n", getLink(fileInfo));
-    printf("    \"uid\": \"%s\",\n", getUid(fileInfo));
-    printf("    \"gid\": \"%s\",\n", getGid(fileInfo));
+    printf("    \"uid\": %u,\n", getUid(fileInfo));
+    printf("    \"gid\": %u,\n", getGid(fileInfo));
     printf("    \"size\": \"%s\",\n", getSize(fileInfo, opts.humanReadable));
     printf("    \"accessTime\": \"%s\",\n", format_time(fileInfo.st_atime, opts.humanReadable));
     printf("    \"modificationTime\": \"%s\",\n", format_time(fileInfo.st_mtime, opts.humanReadable));
